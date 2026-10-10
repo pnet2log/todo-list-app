@@ -6,11 +6,19 @@ type Task = {
   title: string;
   completed: boolean;
   createdAt: number;
+  remindAt?: number;
+  reminded?: boolean;
 };
 
 type Filter = "all" | "active" | "completed";
 
 const STORAGE_KEY = "little-things.tasks";
+const REMINDER_CHECK_INTERVAL = 15_000;
+
+function localDateTimeValue(date: Date): string {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return localDate.toISOString().slice(0, 16);
+}
 
 function readTasks(): Task[] {
   try {
@@ -25,7 +33,9 @@ function readTasks(): Task[] {
         typeof task.id === "string" &&
         typeof task.title === "string" &&
         typeof task.completed === "boolean" &&
-        typeof task.createdAt === "number",
+        typeof task.createdAt === "number" &&
+        (!("remindAt" in task) || typeof task.remindAt === "number") &&
+        (!("reminded" in task) || typeof task.reminded === "boolean"),
     );
   } catch {
     return [];
@@ -42,10 +52,63 @@ function App() {
   const [tasks, setTasks] = useState<Task[]>(readTasks);
   const [newTask, setNewTask] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [reminderTime, setReminderTime] = useState("");
+  const [formMessage, setFormMessage] = useState("");
+  const [notificationPermission, setNotificationPermission] = useState<
+    NotificationPermission | "unsupported"
+  >(() => ("Notification" in window ? Notification.permission : "unsupported"));
+  const [permissionMessage, setPermissionMessage] = useState("");
+  const [reminderAlerts, setReminderAlerts] = useState<Task[]>([]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
+
+  useEffect(() => {
+    if (!tasks.some((task) => !task.completed && task.remindAt && !task.reminded)) {
+      return;
+    }
+
+    const checkReminders = () => {
+      const dueTasks = tasks.filter(
+        (task) =>
+          !task.completed &&
+          task.remindAt !== undefined &&
+          task.remindAt <= Date.now() &&
+          !task.reminded,
+      );
+      if (dueTasks.length === 0) return;
+
+      const dueIds = new Set(dueTasks.map((task) => task.id));
+      setTasks((current) =>
+        current.map((task) =>
+          dueIds.has(task.id) ? { ...task, reminded: true } : task,
+        ),
+      );
+      setReminderAlerts((current) => [...current, ...dueTasks]);
+
+      if (notificationPermission === "granted") {
+        for (const task of dueTasks) {
+          try {
+            const notification = new Notification("A little reminder", {
+              body: task.title,
+              tag: task.id,
+            });
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+            };
+          } catch (error) {
+            console.error("Could not display task reminder notification.", error);
+          }
+        }
+      }
+    };
+
+    const intervalId = window.setInterval(checkReminders, REMINDER_CHECK_INTERVAL);
+    checkReminders();
+    return () => window.clearInterval(intervalId);
+  }, [notificationPermission, tasks]);
 
   const remaining = tasks.filter((task) => !task.completed).length;
   const completed = tasks.length - remaining;
@@ -63,11 +126,42 @@ function App() {
     event.preventDefault();
     const title = newTask.trim();
     if (!title) return;
+    const remindAt = reminderTime ? new Date(reminderTime).getTime() : undefined;
+    if (remindAt !== undefined && (!Number.isFinite(remindAt) || remindAt <= Date.now())) {
+      setFormMessage("Choose a reminder time in the future.");
+      return;
+    }
     setTasks((current) => [
-      { id: crypto.randomUUID(), title, completed: false, createdAt: Date.now() },
+      {
+        id: crypto.randomUUID(),
+        title,
+        completed: false,
+        createdAt: Date.now(),
+        ...(remindAt !== undefined ? { remindAt } : {}),
+      },
       ...current,
     ]);
     setNewTask("");
+    setReminderTime("");
+    setFormMessage("");
+  }
+
+  async function enableNotifications() {
+    if (notificationPermission === "unsupported") return;
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      setPermissionMessage(
+        permission === "granted"
+          ? "Browser reminders are enabled."
+          : "Browser alerts were not enabled. In-app reminders still work while this page is open.",
+      );
+    } catch (error) {
+      console.error("Could not request browser notification permission.", error);
+      setPermissionMessage(
+        "Browser notifications could not be enabled. In-app reminders still work while this page is open.",
+      );
+    }
   }
 
   function toggleTask(id: string) {
@@ -128,6 +222,47 @@ function App() {
             <span className="button-label">Add task</span>
           </button>
         </form>
+        <div className="reminder-settings">
+          <label className="reminder-field" htmlFor="reminder-time">
+            <span className="reminder-label">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="10" cy="10" r="7.1" />
+                <path d="M10 5.8v4.6l3 1.8" />
+              </svg>
+              Remind me
+            </span>
+            <input
+              id="reminder-time"
+              type="datetime-local"
+              value={reminderTime}
+              min={localDateTimeValue(new Date())}
+              onChange={(event) => {
+                setReminderTime(event.target.value);
+                setFormMessage("");
+              }}
+            />
+          </label>
+          {notificationPermission === "default" && (
+            <button
+              className="enable-notifications"
+              type="button"
+              onClick={enableNotifications}
+            >
+              Enable browser alerts
+            </button>
+          )}
+          <span className="notification-status" aria-live="polite">
+            {permissionMessage ||
+              (notificationPermission === "granted"
+                ? "Browser alerts on"
+                : notificationPermission === "denied"
+                  ? "In-app reminders only · browser alerts blocked"
+                  : notificationPermission === "unsupported"
+                    ? "In-app reminders only"
+                    : "Keep this page open for reminders")}
+          </span>
+        </div>
+        {formMessage && <p className="form-message" role="alert">{formMessage}</p>}
 
         <div className="list-toolbar">
           <div className="filters" aria-label="Filter tasks">
@@ -165,7 +300,20 @@ function App() {
                 <span className="task-number" aria-hidden="true">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <span className="task-title">{task.title}</span>
+                <span className="task-description">
+                  <span className="task-title">{task.title}</span>
+                  {task.remindAt !== undefined && (
+                    <span className="task-reminder">
+                      {task.reminded ? "Reminder sent" : "Reminder"} ·{" "}
+                      {new Intl.DateTimeFormat("en", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      }).format(task.remindAt)}
+                    </span>
+                  )}
+                </span>
                 <button
                   type="button"
                   className="delete-button"
@@ -221,6 +369,28 @@ function App() {
           </footer>
         )}
       </section>
+
+      {reminderAlerts.length > 0 && (
+        <div className="reminder-alerts" role="status" aria-live="polite">
+          {reminderAlerts.map((task) => (
+            <div className="reminder-alert" key={task.id}>
+              <span className="alert-icon" aria-hidden="true">✳</span>
+              <span><strong>Reminder</strong>{task.title}</span>
+              <button
+                type="button"
+                aria-label={`Dismiss reminder for ${task.title}`}
+                onClick={() =>
+                  setReminderAlerts((current) =>
+                    current.filter((alert) => alert.id !== task.id),
+                  )
+                }
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <p className="page-note"><span aria-hidden="true">☼</span> Be kind to yourself along the way.</p>
     </main>

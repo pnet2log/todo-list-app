@@ -51,6 +51,15 @@ h1 span { color: #568066; }
 .add-button:hover:not(:disabled) { transform: translateY(-1px); background: var(--green-dark); }
 .add-button:disabled { cursor: not-allowed; opacity: .48; }
 .add-button>span:first-child { font-size: 18px; font-weight: 400; line-height: 1; }
+.reminder-settings { display: flex; min-height: 47px; flex-wrap: wrap; align-items: center; gap: 10px 15px; padding: 8px 4px 3px; }
+.reminder-field { display: inline-flex; align-items: center; gap: 10px; color: #76847a; font-size: 11px; }
+.reminder-label { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.reminder-label svg { width: 15px; height: 15px; fill: none; stroke: #78917a; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.4; }
+.reminder-field input { max-width: 190px; padding: 6px 8px; border: 1px solid #e7ebe4; border-radius: 7px; background: rgba(255,255,255,.72); color: #627267; font-size: 10px; }
+.enable-notifications { padding: 4px 0; border: 0; background: transparent; color: #477555; cursor: pointer; font-size: 10px; font-weight: 600; }
+.enable-notifications:hover { color: var(--green-dark); text-decoration: underline; }
+.notification-status { color: #9aa49c; font-size: 10px; }
+.form-message { margin: 0 4px 8px; color: #b85d48; font-size: 11px; }
 .list-toolbar { display: flex; min-height: 70px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .filters { display: flex; align-items: center; gap: 5px; }
 .filter-button { display: inline-flex; min-height: 34px; align-items: center; gap: 7px; padding: 0 11px; border: 0; border-radius: 7px; background: transparent; color: #89948c; cursor: pointer; font-size: 11px; font-weight: 500; transition: background 150ms,color 150ms; }
@@ -65,8 +74,11 @@ h1 span { color: #568066; }
 .is-complete .check-button { border-color: #6d9575; background: #6d9575; }
 .check-button span { font-size: 12px; line-height: 1; }
 .task-number { width: 19px; color: #b3bdb4; font-size: 9px; font-variant-numeric: tabular-nums; }
-.task-title { flex: 1; overflow-wrap: anywhere; color: #38463d; font-size: 13px; line-height: 1.5; }
+.task-description { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; padding: 10px 0; }
+.task-title { overflow-wrap: anywhere; color: #38463d; font-size: 13px; line-height: 1.5; }
+.task-reminder { color: #8b9b8d; font-size: 10px; }
 .is-complete .task-title { color: #a3aaa4; text-decoration: line-through; text-decoration-color: #b6c0b7; }
+.is-complete .task-reminder { color: #a3aaa4; }
 .delete-button { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; margin-right: 1px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #a8b0a9; cursor: pointer; opacity: 0; transition: background 150ms,color 150ms,opacity 150ms; }
 .task-row:hover .delete-button,.delete-button:focus-visible { opacity: 1; }
 .delete-button:hover { background: #f7eae6; color: #b85d48; }
@@ -87,6 +99,13 @@ h1 span { color: #568066; }
 .clear-button:hover { color: #b85d48; }
 .page-note { position: relative; z-index: 1; margin: auto 0 0; padding-top: 41px; color: #a4ada5; font-size: 11px; letter-spacing: .01em; }
 .page-note span { padding-right: 4px; color: #d8ae5c; }
+.reminder-alerts { position: fixed; z-index: 5; right: 22px; bottom: 22px; display: flex; width: min(380px,calc(100vw - 32px)); flex-direction: column; gap: 9px; }
+.reminder-alert { display: flex; align-items: center; gap: 11px; padding: 13px 14px; border: 1px solid #dce7d9; border-radius: 12px; background: #fff; box-shadow: 0 8px 28px rgba(38,59,44,.14); color: #526457; font-size: 12px; animation: settle-in 220ms ease-out both; }
+.reminder-alert>span:nth-child(2) { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+.reminder-alert strong { color: #42664d; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.alert-icon { color: #73907c; font-size: 17px; }
+.reminder-alert button { width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: #849087; cursor: pointer; font-size: 20px; }
+.reminder-alert button:hover { background: #eef1eb; color: #526457; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
 :focus-visible { outline: 3px solid rgba(69,121,83,.45); outline-offset: 3px; }
 .add-form:focus-within,.check-button:focus-visible,.filter-button:focus-visible,.delete-button:focus-visible,.add-button:focus-visible,.clear-button:focus-visible { outline: none; }
