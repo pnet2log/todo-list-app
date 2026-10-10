@@ -25,3 +25,8 @@ Open the local URL printed by Vite. To create and preview a production build:
 npm run build
 npm run preview
 ```
+
+## Deployment
+
+Every push to `main` builds and deploys the site to GitHub Pages. The deployment
+workflow is also available to run manually from the repository's Actions tab.
